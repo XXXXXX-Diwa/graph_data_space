@@ -1,0 +1,38 @@
+# depslib dependency file v1.0
+1600581148 source:d:\gitdiwa\graph_data_space\decompress.cpp
+	"Decompress.h"
+
+1600581675 d:\gitdiwa\graph_data_space\decompress.h
+	<iostream>
+	<fstream>
+
+1600605062 source:d:\gitdiwa\graph_data_space\dataexception.cpp
+	"DataException.h"
+
+1600597984 d:\gitdiwa\graph_data_space\dataexception.h
+	<iostream>
+
+1600599215 source:d:\gitdiwa\graph_data_space\main.cpp
+	<iostream>
+	"File.h"
+	"DataException.h"
+	<memory>
+
+1600606852 d:\gitdiwa\graph_data_space\file.h
+	<iostream>
+	<fstream>
+	<memory>
+	"Decompress.h"
+	<map>
+	<vector>
+
+1600609773 source:d:\gitdiwa\graph_data_space\file.cpp
+	"File.h"
+	"DataException.h"
+	<sstream>
+	<iterator>
+	<iomanip>
+	<direct.h>
+	<wchar.h>
+	<windows.h>
+
