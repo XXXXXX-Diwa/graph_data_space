@@ -6,22 +6,18 @@
 #include <direct.h>
 #include <wchar.h>
 #include <windows.h>
+#include <algorithm>
 
 File::File(const int n,const char** fns){
     if(n==1||n>2){
         DataException::AllException();
     }
-    appDir=OnlyPath(fns[0]);
+    fileDir=OnlyPath(fns[0],fns[1]);//文件所在目录(仅目录,或程序目录)
     fileName=fns[1];
-    fileType=CheckFileType();
+    iszm=CheckFileType();
 }
 
 void File::GraphDataSpace(){
-    if(fileType==0){
-        //查看数据才发现mf的graph_data非压缩,因此头数据没有解压长度数据
-        //故放弃对mf的支持(毕竟本来就是附带的支持)
-        DataException::ExceptionPrint(std::string("不支持非lz777压缩的gfx类型数据!"));
-    }
     GetPointers();
     GetPalData(GetGfxData());
     MakeDataFolders();
@@ -30,17 +26,17 @@ void File::GraphDataSpace(){
     MakeSpritesGraphDataPointersArmFile();
     MakeSpritesGraphDataFilesArmFile();
     MakeGraphDataOldSpaceUseArmFile();
-    AnsiFileToUf8File(GetAsmFileName(appDir));
+    AnsiFileToUf8File(GetAsmFileName(fileDir));
 }
 
 void File::MakeDataFolders(){
-    std::string s=appDir+"\\spritegfxs";
+    std::string s=fileDir+"\\spritegfxs";
     if(0!=access(s.c_str(),0)){
         if(mkdir(s.c_str())){
             DataException::AllException(2,s);
         }
     }
-    s=appDir+"\\spritepals";
+    s=fileDir+"\\spritepals";
     if(0!=access(s.c_str(),0)){
         if(mkdir(s.c_str())){
             DataException::AllException(2,s);
@@ -50,10 +46,10 @@ void File::MakeDataFolders(){
 
 void File::MakeGraphDataOldSpaceUseArmFile(){
     std::ofstream ouf;
-    MakeFile(ouf,appDir+"graphDataOldSpaceUse.asm",false);
-    std::map<uint32_t,uint32_t>::iterator iter=pointerAndLen.begin();
+    MakeFile(ouf,fileDir+"graphDataOldSpaceUse.asm",false);
+    std::map<uint32_t,uint32_t>::iterator iter=pointerFusion.begin();
     ouf<<std::hex<<setiosflags(ios::uppercase)<<setfill('0');
-    for(;iter!=pointerAndLen.end();++iter){
+    for(;iter!=pointerFusion.end();++iter){
         ouf<<".org 0x"<<std::setw(7)<<static_cast<int>(iter->first|0x8000000)
         <<"\n.area 0x"<<static_cast<int>(iter->first|0x8000000)
         <<",0\n\n.endarea\n"<<std::endl;
@@ -63,32 +59,50 @@ void File::MakeGraphDataOldSpaceUseArmFile(){
 
 void File::MakeSpritesGraphDataPointersArmFile(){
     std::ofstream ouf;
-    MakeFile(ouf,appDir+"spriteGfaphDataPointer.asm",false);
+    MakeFile(ouf,fileDir+"spriteGfaphDataPointer.asm",false);
 
     ouf<<std::hex<<setiosflags(ios::uppercase)<<setfill('0')
-    <<"org 0x"<<std::setw(7)<<static_cast<int>(gfxPsP|0x8000000)<<std::endl;
-    for(int i=0x10;i<spritesNum+0x10;++i){
+    <<".org 0x"<<std::setw(7)<<static_cast<int>(gfxPsP|0x8000000)<<std::endl;
+    for(int i=0x11;i<spritesNum+0x11;++i){
         ouf<<std::setw(2)<<"\t.word sprite_"<<i<<"_gfx"<<std::endl;
     }
-    ouf<<"\norg 0x"<<std::setw(7)<<static_cast<int>(palPsP|0x8000000)<<std::endl;
-    for(int i=0x10;i<spritesNum+0x10;++i){
+    ouf<<"\n.org 0x"<<std::setw(7)<<static_cast<int>(palPsP|0x8000000)<<std::endl;
+    for(int i=0x11;i<spritesNum+0x11;++i){
         ouf<<std::setw(2)<<"\t.word sprite_"<<i<<"_pal"<<std::endl;
     }
     ouf.close();
 }
 
+bool File::PointerCompare(const pointerAndLen &p1,const pointerAndLen &p2){
+    return p1.pointer < p2.pointer;
+}
+
+bool File::PointerSame(const pointerAndLen &p1,const pointerAndLen &p2){
+    return p1.pointer ==p2.pointer;
+}
+
 void File::MakeSpritesGraphDataFilesArmFile(){
     std::ofstream ouf;
-    MakeFile(ouf,appDir+"spriteGraphData.asm",false);
-    std::map<uint32_t,uint32_t>::iterator iter=pointerToNO.begin();
+    MakeFile(ouf,fileDir+"spriteGraphData.asm",false);
+    std::vector<pointerAndLen>::iterator iter=gfxPointers.begin();
     ouf<<std::hex<<setiosflags(ios::uppercase)<<setfill('0');
     ouf<<".org 0x8760d38"<<endl;
-    for(;iter!=pointerToNO.begin();++iter){
-        uint32_t pos=distance(pointerToNO.begin(),iter);
-        ouf<<".align\nsprite_"<<setw(2)<<static_cast<int>(iter->second)<<"_gfx:"<<std::endl;
-        ouf<<"\t.import \""<<gfxFiles[pos]<<"\""<<std::endl;
-        ouf<<".align\nsprite_"<<setw(2)<<static_cast<int>(iter->second)<<"_pal:"<<std::endl;
-        ouf<<"\t.import \""<<palFiles[pos]<<"\""<<std::endl;
+    for(;iter!=gfxPointers.end();++iter){
+        uint32_t pos=distance(gfxPointers.begin(),iter);
+        iter->length=pos+0x11;//长度改为序号
+//        ouf<<".align\nsprite_"<<setw(2)<<static_cast<int>(pos+0x11)<<"_gfx:"<<std::endl;
+//        ouf<<"\t.import \""<<gfxFiles[distance(gfxPointers.begin(),iter)]<<"\""<<std::endl;
+    }
+    sort(gfxPointers.begin(),gfxPointers.end(),PointerCompare);
+//    gfxPointers.erase(unique(gfxPointers.begin(),gfxPointers.end(),PointerSame),gfxPointers.end());
+    for(iter=gfxPointers.begin();iter!=gfxPointers.end();++iter){
+        ouf<<".align\nsprite_"<<setw(2)<<static_cast<int>(iter->length)<<"_gfx:"<<std::endl;
+        ouf<<"\t.import \""<<gfxFiles[distance(gfxPointers.begin(),iter)]<<"\""<<std::endl;
+    }
+    for(iter=palPointers.begin();iter!=palPointers.end();++iter){
+        uint32_t pos=distance(palPointers.begin(),iter);
+        ouf<<".align\nsprite_"<<setw(2)<<static_cast<int>(pos+0x11)<<"_pal:"<<std::endl;
+        ouf<<"\t.import \""<<static_cast<int>(iter->pointer)<<"\""<<std::endl;
     }
 }
 
@@ -169,21 +183,20 @@ void File::UTF8FromUCS2(const wchar_t *uptr, unsigned int tlen, char *putf, unsi
 }
 
 void File::MapDataFusion(){
-//    pointerFusion=pointerAndLen;
-    std::map<uint32_t,uint32_t>::iterator iter=pointerAndLen.begin();
+    std::map<uint32_t,uint32_t>::iterator iter=pointerFusion.begin();
     uint32_t oft=0;
     uint32_t len=0;
     uint32_t tail=0;
     while(true){
         tail=iter->first+iter->second;
         ++iter;
-        if(iter==pointerAndLen.end()){
+        if(iter==pointerFusion.end()){
             break;
         }
         oft=iter->first;
         len=iter->second;
         if(tail==iter->first||(tail+4)>=iter->first){
-            pointerAndLen.erase(iter--);
+            pointerFusion.erase(iter--);
             tail=oft+len;
             iter->second=tail-iter->first;
         }
@@ -229,46 +242,52 @@ void File::MakeDataFiles(){
     std::ifstream inf;
     OpenFile(inf,fileName,true);
     std::ofstream ouf;
-    std::map<uint32_t,uint32_t>::iterator iter=pointerAndLen.begin();
+    std::map<uint32_t,uint32_t>::iterator iter=pointerFusion.begin();
     char *buffer=new char[0x4000];//提升效率懒得用智能指针了
     gfxFiles.reserve(spritesNum);
     palFiles.reserve(spritesNum);
-    for(;iter!=pointerAndLen.end();++iter){
+    for(;iter!=pointerFusion.end();++iter){
         MakeFile(ouf,PointerFileName(iter->first,iter->second),true);
+//        std::cout<<static_cast<int>(iter->first)<<std::endl;
+//        std::cin.get();
         inf.seekg(iter->first,ios::beg);
         inf.read(buffer,iter->second);
         ouf.write(buffer,iter->second);
         ouf.close();
     }
     delete[]buffer;
+    buffer=NULL;
 }
 
-std::string& File::PointerFileName(uint32_t oft,uint32_t len){
+std::string File::PointerFileName(uint32_t oft,uint32_t len){
+    std::string s="";
     std::stringstream ss;
     ss<<std::hex<<setw(2)<<setfill('0')<<setiosflags(ios::uppercase)<<oft;
     if(len>=0x800){
-        gfxFiles.emplace_back(appDir+"spritegfxs\\spritegfx_"+ss.str()+".lz7");
-        return gfxFiles.back();
+        s=fileDir+"spritegfxs\\spritegfx_"+ss.str()+".lz7";
+        gfxFiles.emplace_back(s);
     }else{
-        palFiles.emplace_back(appDir+"spritepals\\spritepal_"+ss.str()+".pal");
-        return palFiles.back();
+        s=fileDir+"spritepals\\spritepal_"+ss.str()+".pal";
+        palFiles.emplace_back(s);
     }
+    return s;
 }
 
 std::vector<uint32_t> File::GetGfxData(){
     std::ifstream inf;
-    std::vector<uint32_t>palens(spritesNum);
+    std::vector<uint32_t>palens;
+    palens.reserve(spritesNum);
     OpenFile(inf,fileName,true);
     std::shared_ptr<Lz77BgData>lz7(new Lz77BgData());//创建Lz777解压类shared智能指针
-    std::vector<uint32_t>::iterator iter=gfxPointers.begin();
+    std::vector<pointerAndLen>::iterator iter=gfxPointers.begin();
     for(;iter!=gfxPointers.end();++iter){
-        inf.seekg(*iter,ios::beg);
+        inf.seekg(iter->pointer,ios::beg);
         lz7->getLz77CompressData(inf,true);
         if(lz7->definelen%0x800!=0){
-            DataException::AllException(*iter,1);
+            DataException::AllException(iter->pointer,1);
         }
-        pointerToNO.insert(pair<uint32_t,uint32_t>(*iter,distance(gfxPointers.begin(),iter)));
-        pointerAndLen.insert(pair<uint32_t,uint32_t>(*iter,lz7->length+4));
+        iter->length=lz7->length+4;
+        pointerFusion.insert(pair<uint32_t,uint32_t>(iter->pointer,iter->length));
         palens.emplace_back(lz7->definelen/0x40);
     }
     lz7.reset();
@@ -279,24 +298,20 @@ std::vector<uint32_t> File::GetGfxData(){
 
 void File::GetPalData(std::vector<uint32_t>lens){
     std::vector<uint32_t>::iterator iterl=lens.begin();
-    std::vector<uint32_t>::iterator iterp=palPointers.begin();
+    std::vector<pointerAndLen>::iterator iterp=palPointers.begin();
     for(;iterl!=lens.end();++iterl,++iterp){
-        pointerToNO.insert(pair<uint32_t,uint32_t>(*iterp,distance(palPointers.begin(),iterp)));
-        pointerAndLen.insert(pair<uint32_t,uint32_t>(*iterp,*iterl));
+        iterp->length=*iterl;
+        pointerFusion.insert(pair<uint32_t,uint32_t>(iterp->pointer,iterp->length));
     }
 }
 
 void File::GetPointers(){
-    if(2==fileType){
+    if(!iszm){
         void GetArgs();
-    }else if(1==fileType){
+    }else{
         gfxPsP=mzmUSpriteGfxPsP;
         palPsP=mzmUSpritePalPsP;
         spritesNum=mzmSpritesNum;
-    }else{
-        gfxPsP=mfUSpriteGfxPsP;
-        palPsP=mfUSpritePalPsP;
-        spritesNum=mfSpritesNum;
     }
     gfxPointers.reserve(spritesNum);//扩容提升效率
     palPointers.reserve(spritesNum);
@@ -306,13 +321,18 @@ void File::GetPointers(){
 
     inf.seekg(gfxPsP,ios::beg);
     inf.read((char*)pointers,spritesNum*4);
+    pointerAndLen ptol;
     for(int i=0;i<spritesNum;++i){
-        gfxPointers.emplace_back(pointers[i]^0x8000000);
+        ptol.pointer=pointers[i]^0x8000000;
+        ptol.length=0;
+        gfxPointers.emplace_back(ptol);
     }
     inf.seekg(palPsP,ios::beg);
     inf.read((char*)pointers,spritesNum*4);
     for(int i=0;i<spritesNum;++i){
-        palPointers.emplace_back(pointers[i]^0x8000000);
+        ptol.pointer=pointers[i]^0x8000000;
+        ptol.length=0;
+        palPointers.emplace_back(ptol);
     }
     inf.close();
 }
@@ -377,12 +397,17 @@ bool File::PointerCheckError(const uint32_t p,const uint8_t n){
     return false;
 }
 
-std::string File::OnlyPath(std::string s){
+std::string File::OnlyPath(std::string a,std::string s){
     size_t pos=s.find_last_of('\\');
     if(pos>0&&pos!=std::string::npos){
         return s.substr(0,pos+1);
+    }else{
+        pos=a.find_last_of('\\');
+        if(pos>0&&pos!=std::string::npos){
+            return a.substr(0,pos+1);
+        }
     }
-    return s;
+    return "";
 }
 
 void File::OpenFile(std::ifstream&inf,std::string fn,bool bin){
@@ -407,46 +432,24 @@ void File::MakeFile(std::ofstream&ouf,std::string fn,bool bin){
     }
 }
 
-uint8_t File::CheckFileType(){
+bool File::CheckFileType(){
     std::ifstream inf;
-    uint8_t type;
 
     OpenFile(inf,fileName,true);
     uint8_t headData[0x10];
     inf.seekg(0xA0,ios::beg);
     inf.read((char*)headData,0x10);
-    if(CheckHeaderData(headData,1)){
-        type=1;
-    }else if(CheckHeaderData(headData,0)){
-        type=0;
-    }else{
-        type=PointerCheckType(inf);
-    }
     inf.close();
-    return type;
+    return CheckHeaderData(headData);
 }
 
 uint8_t File::PointerCheckType(std::ifstream&inf){
     inf.seekg(mzmUSpriteGfxPsP,ios::beg);
-    uint32_t pointers[0xBF]={};
+    uint32_t pointers[mzmSpritesNum]={};
 
     inf.read((char*)pointers,mzmSpritesNum*4);
     for(uint8_t i=0;i<mzmSpritesNum;++i){
         if(4!=(pointers[i]>>25)){
-            inf.seekg(mfUSpriteGfxPsP,ios::beg);
-            inf.read((char*)pointers,mfSpritesNum*4);
-            for(uint8_t j=0;j<mfSpritesNum;++j){
-                if(4!=(pointers[i]>>25)){
-                    return 2;
-                }
-            }
-            inf.seekg(mfUSpritePalPsP,ios::beg);
-            inf.read((char*)pointers,mfSpritesNum*4);
-            for(uint8_t j=0;j<mfSpritesNum;++j){
-                if(4!=(pointers[i]>>25)){
-                    return 2;
-                }
-            }
             return 0;
         }
     }
@@ -460,15 +463,9 @@ uint8_t File::PointerCheckType(std::ifstream&inf){
     return 1;
 }
 
-bool File::CheckHeaderData(uint8_t *hd,const int n){
-    const uint8_t* headat;
-    if(n){
-        headat=mzmUHeaderData;
-    }else{
-        headat=mfUHeaderData;
-    }
+bool File::CheckHeaderData(uint8_t *hd){
     for(int i=0;i<0x10;++i){
-        if(hd[i]!=headat[i]){
+        if(hd[i]!=mzmUHeaderData[i]){
             return false;
         }
     }
