@@ -5,7 +5,7 @@
 #include <iomanip>
 #include <sstream>
 
-uint32_t File::save=0;
+//uint32_t File::save=0;
 File::~File(){
     //dtor
     std::cout<<"导出完成!"<<std::endl;
@@ -332,8 +332,8 @@ std::vector<uint32_t> File::GetGfxInfo(uint32_t beg,uint8_t len){
             DataException::AllException(ps[i],0);
         }
         info.address=ps[i]^0x8000000;
-        save=info.address;
-        auto iter=std::find_if(gfxInfo.begin(),gfxInfo.end(),PointerSame);
+
+        auto iter=std::find_if(gfxInfo.begin(),gfxInfo.end(),finder_t(info.address));
         inf.seekg(info.address,ios::beg);
         if(iter!=gfxInfo.end()){
             info.len=iter->len;
@@ -361,9 +361,9 @@ bool File::PointerCompare(const Info& i1,const Info& i2){
     return i1.address < i2.address;
 }
 
-bool File::PointerSame(const Info &i){
-    return i.address == save;
-}
+//bool File::PointerSame(const Info &i){
+//    return i.address == save;
+//}
 
 bool File::PointerEqual(const Info& i1,const Info& i2){
     return i1.address == i2.address;

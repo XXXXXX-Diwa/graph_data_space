@@ -15,15 +15,21 @@ class File{
         File(const int,const char**);
         virtual ~File();
         void GraphDataSpace();
-
-    protected:
-
-    private:
         struct Info{
             uint8_t order;
             uint32_t address;
             uint32_t len;
         };
+    protected:
+
+    private:
+
+//        class AddressCompare{
+//            AddressCompare(uint32_t get):save(get){}
+//
+//            uint32_t save;
+//        };
+        bool operator()(Info&);
         File(const File&)=delete;
         void operator=(const File&)=delete;
         void OpenFile(std::ifstream&,std::string,bool);
@@ -68,6 +74,16 @@ class File{
         std::map<uint32_t,uint32_t>pointerFusion;
         const int argNum;
         const char** args;
-        static uint32_t save;
+//        static uint32_t save;
+        struct finder_t
+        {
+            finder_t(uint32_t n) : save(n){}
+            bool operator()(const std::vector<File::Info>::value_type&p){
+              return (save == p.address);
+            }
+            uint32_t save;
+        };
 };
+
+
 #endif // FILE_H
