@@ -42,8 +42,24 @@ void File::GraphDataSpace(){
     MakeSpritesGraphDataArmFile();
     DataPointerFusion();
     MakeGraphDataOldSpaceUseArmFile();
-    AnsiFileToUf8File(std::vector<std::string>(armFiles,armFiles+3));
+    MakeTestArmFile();
+    AnsiFileToUf8File(std::vector<std::string>(armFiles,armFiles+4));
+}
 
+void File::MakeTestArmFile(){
+    std::ofstream ouf;
+    MakeFile(ouf,curPath+armFiles[3],false);
+    ouf<<".gba\n.open \""<<OnlyName(args[1])<<"\",\"spriteGraphDataMove.gba\",0x8000000\n"
+    <<"\n.include \""<<armFiles[0]<<"\"\n"<<"\n.include \""<<armFiles[1]
+    <<"\"\n\n.close"<<std::endl;
+}
+
+std::string File::OnlyName(std::string s){
+    size_t pos=s.find_last_of('\\');
+    if(pos>0&&pos!=std::string::npos){
+        return s.substr(pos+1);
+    }
+    return s;
 }
 
 void File::AnsiFileToUf8File(std::vector<std::string>armf){

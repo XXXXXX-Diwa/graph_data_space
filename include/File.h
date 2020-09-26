@@ -48,16 +48,20 @@ class File{
         uint32_t UTF8Length(const wchar_t *,unsigned int);
         void UTF8FromUCS2(const wchar_t *,unsigned int, char *, unsigned int);
 
+        void MakeTestArmFile();
+        std::string OnlyName(std::string);
+
         const uint32_t mzmUSpriteGfxPsP=0x75EBF8 + 4;//第一个图特别奇葩,竟然不足0x800长度,故跳过
         const uint32_t mzmUSpritePalPsP=0x75EEF0 + 4;
         const uint8_t mzmSpritesLen=0xBE - 0x1;//总数减去第一个图
 
 
         std::string curPath;
-        std::string armFiles[3]={
+        std::string armFiles[4]={
             "spriteGraphDataPointer.asm",
             "spriteGraphData.asm",
-            "graphDataOldSpaceUse.asm"
+            "graphDataOldSpaceUse.asm",
+            "test.asm"
         };
         std::vector<Info>gfxInfo;
         std::vector<Info>palInfo;
