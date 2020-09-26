@@ -10,7 +10,7 @@ void DataException::AllException(const uint32_t p,const int n){
         std::cerr<<"错误的地址: "<<std::hex<<p;
         break;
     case 1:
-        std::cerr<<"图片坐标: "<<std::hex<<p<<"长度异常!";
+        std::cerr<<"图片长度: "<<std::hex<<p<<"异常!";
         break;
     default:
         break;

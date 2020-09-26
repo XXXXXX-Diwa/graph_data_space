@@ -12,10 +12,9 @@
 				<Option type="1" />
 				<Option compiler="gcc" />
 				<Option parameters="D:\GitDiwa\graph_data_space\bin\Debug\zm.gba" />
-				<Option host_application="bin/Debug/graph_data_space.exe" />
-				<Option run_host_application_in_terminal="0" />
 				<Compiler>
 					<Add option="-g" />
+					<Add directory="include" />
 				</Compiler>
 			</Target>
 			<Target title="Release">
@@ -25,6 +24,7 @@
 				<Option compiler="gcc" />
 				<Compiler>
 					<Add option="-O2" />
+					<Add directory="include" />
 				</Compiler>
 				<Linker>
 					<Add option="-s" />
@@ -35,13 +35,13 @@
 			<Add option="-Wall" />
 			<Add option="-fexceptions" />
 		</Compiler>
-		<Unit filename="DataException.cpp" />
-		<Unit filename="DataException.h" />
-		<Unit filename="Decompress.cpp" />
-		<Unit filename="Decompress.h" />
-		<Unit filename="File.cpp" />
-		<Unit filename="File.h" />
+		<Unit filename="include/DataException.h" />
+		<Unit filename="include/Decompress.h" />
+		<Unit filename="include/File.h" />
 		<Unit filename="main.cpp" />
+		<Unit filename="src/DataException.cpp" />
+		<Unit filename="src/Decompress.cpp" />
+		<Unit filename="src/File.cpp" />
 		<Extensions>
 			<code_completion />
 			<envvars />

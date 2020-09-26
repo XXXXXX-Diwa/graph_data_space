@@ -1,15 +1,16 @@
 #include <iostream>
 #include "File.h"
-#include "DataException.h"
-#include <memory>
 
 using namespace std;
 
-int main(const int argc,const char* argv[])
+int main(const int argc,const char** argv)
 {
-    ios::sync_with_stdio(false);
-    std::shared_ptr<File>curFile(new File(argc,argv));
+    std::ios::sync_with_stdio(false);
+    File* curFile=new File(argc,argv);
     curFile->GraphDataSpace();
-    curFile.reset();
+    if(NULL!=curFile){
+        delete curFile;
+        curFile=NULL;
+    }
     return 0;
 }
