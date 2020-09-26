@@ -77,7 +77,7 @@ class File{
 //        static uint32_t save;
         struct finder_t
         {
-            finder_t(uint32_t n) : save(n){}
+            finder_t(const uint32_t n) : save(n){}
             bool operator()(const std::vector<File::Info>::value_type&p){
               return (save == p.address);
             }
